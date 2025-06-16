@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'profile.dart';
+import 'purchase/transaction-data.dart';
 
 class MatchPage extends StatefulWidget {
   const MatchPage({super.key});
@@ -174,7 +175,14 @@ class _MatchPageState extends State<MatchPage> {
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => TransactionDataPage(),
+                                        ),
+                                      );
+                                    },
                                     child: const Text(
                                       'Beli Tiket Bundling',
                                       style: TextStyle(

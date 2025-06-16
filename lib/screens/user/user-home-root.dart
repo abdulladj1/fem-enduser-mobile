@@ -4,21 +4,6 @@ import 'home.dart';
 import 'match.dart';
 import 'ticket.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: const UserHomeRoot(),
-    );
-  }
-}
 class UserHomeRoot extends StatefulWidget {
   final int initialIndex;
   const UserHomeRoot({super.key, this.initialIndex = 0});
@@ -68,7 +53,7 @@ class _UserHomeRootState extends State<UserHomeRoot> {
             label: 'Pertandingan',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.confirmation_number),
+            icon: Icon(Icons.person),
             label: 'Tiket',
           ),
         ],

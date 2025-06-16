@@ -24,7 +24,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> fetchProfileData() async {
-    // api sayang
+    // api
     final String endpoint = '${dotenv.env['API_BASE_URL']}/member/auth/profile';
 
     final token = await PrefHelper().getToken();
@@ -223,6 +223,13 @@ class _ProfilePageState extends State<ProfilePage> {
                     MaterialPageRoute(builder: (context) => const SignInPage()),
                   );
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDC2626),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: Text(
                   'LOGOUT',
                   style: TextStyle(
@@ -230,13 +237,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                     fontSize: 10,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDC2626),
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
