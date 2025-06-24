@@ -1,5 +1,13 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ifl_mobile/models/season.dart' as modelSeason;
+import 'package:ifl_mobile/models/ticket.dart';
+import 'package:ifl_mobile/models/series.dart';
+import 'package:ifl_mobile/services/season.dart';
+import 'package:ifl_mobile/services/series.dart';
+import 'package:intl/intl.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'profile.dart';
 import 'user-home-root.dart';
 
@@ -13,6 +21,11 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController();
   double _scrollOffset = 0.0;
+  modelSeason.Season? activeSeason;
+  List<Series> seriesList = [];
+  Series? _nearestSeries;
+  List<Match> nearestMatches = [];
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -22,6 +35,71 @@ class _HomePageState extends State<HomePage> {
         _scrollOffset = _scrollController.offset;
       });
     });
+
+    fetchActiveSeason().then((season) {
+      setState(() {
+        activeSeason = season;
+        isLoading = false;
+      });
+    });
+
+    _loadSeries();
+    _loadNearestSeries();
+  }
+
+  Future<void> _loadSeries() async {
+    try {
+      final fetched = await fetchSeries(
+        status: 1,
+        sort: 'startDate',
+        dir: 'asc',
+        seasonId: null,
+      );
+
+      List<Match> matches = [];
+      if (fetched.isNotEmpty) {
+        final Series nearest = fetched.first;
+        for (final t in nearest.tickets ?? []) {
+          matches.addAll(t.matchs);
+        }
+      }
+
+      setState(() {
+        seriesList = fetched;
+        nearestMatches = matches;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _loadNearestSeries() async {
+    try {
+      final fetched = await fetchSeries(
+        status: 1,
+        sort: 'startDate',
+        dir: 'asc',
+        seasonId: null,
+      );
+
+      if (fetched.isNotEmpty) {
+        final Series firstSeries = fetched.first;
+        final matches = <Match>[
+          for (final t in firstSeries.tickets ?? []) ...t.matchs,
+        ];
+
+        setState(() {
+          _nearestSeries = firstSeries;
+          nearestMatches = matches;
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -30,26 +108,146 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // Color get _appBarColor {
-  //   if (_scrollOffset > 40) {
-  //     return Colors.white;
-  //   } else {
-  //     return Colors.transparent;
-  //   }
-  // }
+  Widget _matchCard(Match m, Ticket ticket) {
+    final venueName = _nearestSeries?.venue.name ?? '';
 
-  // Brightness get _statusBarIconBrightness {
-  //   return _scrollOffset > 40 ? Brightness.dark : Brightness.light;
-  // }
+    return Container(
+      width: 380,
+      height: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/images/pattern-5.png'),
+          fit: BoxFit.cover,
+        ),
+        color: Color(0xFF00009C),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  'Match ${ticket.name}',
+                  style: const TextStyle(
+                    fontFamily: 'SinkinSans',
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF00009C),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                DateFormat(
+                  'd MMMM yyyy',
+                  'id_ID',
+                ).format(ticket.date.toLocal()),
+                style: const TextStyle(
+                  fontFamily: 'SinkinSans',
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _teamColumn(m.homeLogo, m.homeTeam),
+              const SizedBox(width: 40),
+              Text(
+                'VS',
+                style: TextStyle(
+                  fontFamily: 'SinkinSans',
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+              const SizedBox(width: 40),
+              _teamColumn(m.awayLogo, m.awayTeam),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/icons/Venue.png', fit: BoxFit.cover),
+              SizedBox(width: 8),
+              Text(
+                venueName,
+                style: const TextStyle(
+                  fontFamily: 'SinkinSans',
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// helper kecil untuk logo + nama
+  Widget _teamColumn(String logo, String name) {
+    return Column(
+      children: [
+        CachedNetworkImage(
+          imageUrl: logo,
+          width: 28,
+          fit: BoxFit.contain,
+          placeholder:
+              (_, __) => const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+          errorWidget:
+              (_, __, ___) =>
+                  const Icon(Icons.broken_image, size: 28, color: Colors.grey),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 50,
+          child: Text(
+            name,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: const TextStyle(
+              fontFamily: 'SinkinSans',
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              fontSize: 10,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value:
-          // _statusBarIconBrightness == Brightness.dark
-          //     ? SystemUiOverlayStyle.dark
-          //     : SystemUiOverlayStyle.light,
-              _scrollOffset > 204 ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
+          _scrollOffset > 204
+              ? SystemUiOverlayStyle.dark
+              : SystemUiOverlayStyle.light,
       child: Scaffold(
         extendBodyBehindAppBar: true,
         appBar: PreferredSize(
@@ -58,9 +256,14 @@ class _HomePageState extends State<HomePage> {
             padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
             decoration: BoxDecoration(
               color: _scrollOffset > 204 ? Colors.white : Colors.transparent,
-              border: _scrollOffset > 204 ? const Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)) : const Border(
-                bottom: BorderSide(color: Colors.transparent, width: 1),
-              ),
+              border:
+                  _scrollOffset > 204
+                      ? const Border(
+                        bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1),
+                      )
+                      : const Border(
+                        bottom: BorderSide(color: Colors.transparent, width: 1),
+                      ),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -69,10 +272,16 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: _scrollOffset > 204 ? Image.asset('assets/images/PFL-Logo-Biru.png', height: 32) : Image.asset(
-                      'assets/images/PFL-Logo-Putih.png',
-                      height: 32,
-                    ),
+                    child:
+                        _scrollOffset > 204
+                            ? Image.asset(
+                              'assets/images/PFL-Logo-Biru.png',
+                              height: 32,
+                            )
+                            : Image.asset(
+                              'assets/images/PFL-Logo-Putih.png',
+                              height: 32,
+                            ),
                   ),
                   Row(
                     children: [
@@ -80,7 +289,9 @@ class _HomePageState extends State<HomePage> {
                         icon: Icon(
                           Icons.notifications,
                           color:
-                              _scrollOffset > 204 ? const Color(0xFF0027C1) : Colors.white,
+                              _scrollOffset > 204
+                                  ? const Color(0xFF0027C1)
+                                  : Colors.white,
                         ),
                         onPressed: () {},
                       ),
@@ -88,7 +299,9 @@ class _HomePageState extends State<HomePage> {
                         icon: Icon(
                           Icons.person,
                           color:
-                              _scrollOffset > 204 ? const Color(0xFF0027C1) : Colors.white,
+                              _scrollOffset > 204
+                                  ? const Color(0xFF0027C1)
+                                  : Colors.white,
                         ),
                         onPressed: () {
                           Navigator.push(
@@ -125,31 +338,32 @@ class _HomePageState extends State<HomePage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Image.asset(
-                      'assets/icons/soccer-ball-fill.png',
-                      width: 20,
-                      height: 20,
+                    Row(
+                      children: [
+                        Image.asset(
+                          'assets/icons/soccer-ball-fill.png',
+                          width: 20,
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'PERTANDINGAN TERDEKAT',
+                          style: TextStyle(
+                            fontFamily: 'SinkinSans',
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF00009C),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(width: 4),
-                    Text(
-                      "PERTANDINGAN TERDEKAT",
-                      style: TextStyle(
-                        fontFamily: 'SinkinSans',
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF00009C),
-                        fontSize: 12,
-                      ),
-                    ),
-                    Spacer(),
                     TextButton(
                       onPressed: () {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder:
-                                (context) => const UserHomeRoot(initialIndex: 1),
+                            builder: (context) => const UserHomeRoot(initialIndex: 1),
                           ),
                         );
                       },
@@ -160,28 +374,26 @@ class _HomePageState extends State<HomePage> {
                         ),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 6,
+                          vertical: 4,
                         ),
                         minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text(
-                            "lihat semua",
+                            ' lihat semua',
                             style: TextStyle(
                               fontFamily: 'SinkinSans',
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFFFFFFFF),
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                               fontSize: 8,
                             ),
                           ),
-                          SizedBox(width: 2),
+                          const SizedBox(width: 2),
                           Image.asset(
                             'assets/icons/chevron-right-white.png',
                             width: 16,
-                            height: 16,
+                            height: 20,
                           ),
                         ],
                       ),
@@ -189,60 +401,44 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              Container(
-                margin: const EdgeInsets.only(
-                  top: 12.0,
-                  left: 16.0,
-                  right: 16.0,
-                  bottom: 8.0,
-                ),
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF00009C),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    Text("Match Day 1", style: TextStyle(color: Colors.white)),
-                    Text(
-                      "19 April 2025",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Column(
-                          children: [
-                            Icon(Icons.shield, color: Colors.white),
-                            Text(
-                              "Tim A",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ],
+
+              SizedBox(
+                height: 224,
+                width: double.infinity,
+                child:
+                    isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : (_nearestSeries == null || nearestMatches.isEmpty)
+                        ? const Center(child: Text('Belum ada jadwal'))
+                        : CarouselSlider(
+                          options: CarouselOptions(
+                            height: 244,
+                            enableInfiniteScroll: true,
+                            enlargeCenterPage: true,
+                            viewportFraction: 0.82,
+                            // autoPlay: true,
+                            // autoPlayInterval: Duration(seconds: 4),
+                            // autoPlayAnimationDuration: Duration(
+                            //   milliseconds: 800,
+                            // ),
+                            // autoPlayCurve: Curves.easeInOut,
+                          ),
+                          items:
+                              nearestMatches.map((m) {
+                                final ticket = _nearestSeries?.tickets
+                                    ?.firstWhere((t) => t.matchs.contains(m));
+                                if (ticket == null) {
+                                  return const SizedBox();
+                                }
+                                return _matchCard(m, ticket);
+                              }).toList(),
                         ),
-                        Text("VS", style: TextStyle(color: Colors.white)),
-                        Column(
-                          children: [
-                            Icon(Icons.shield, color: Colors.white),
-                            Text(
-                              "Tim B",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Text("SURAKARTA", style: TextStyle(color: Colors.white)),
-                  ],
-                ),
               ),
 
               // Series
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
+                  horizontal: 16,
                   vertical: 8,
                 ),
                 child: Row(
@@ -264,19 +460,29 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              Container(
-                margin: const EdgeInsets.only(
-                  left: 16.0,
-                  right: 16.0,
-                  bottom: 8.0,
-                ),
-                height: 72,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/series-banner.png'),
-                    fit: BoxFit.fill,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UserHomeRoot(initialIndex: 1),
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(
+                    left: 16.0,
+                    right: 16.0,
+                    bottom: 8.0,
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  height: 72,
+                  decoration: BoxDecoration(
+                    image: const DecorationImage(
+                      image: AssetImage('assets/images/series-banner.png'),
+                      fit: BoxFit.fill,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
 
