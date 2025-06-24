@@ -14,6 +14,7 @@ class UserHomeRoot extends StatefulWidget {
 
 class _UserHomeRootState extends State<UserHomeRoot> {
   late int _currentIndex;
+  // late Season _activeSeason;
 
   @override
   void initState() {
@@ -26,6 +27,8 @@ class _UserHomeRootState extends State<UserHomeRoot> {
     MatchPage(),
     TicketPage(),
   ];
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +56,7 @@ class _UserHomeRootState extends State<UserHomeRoot> {
             label: 'Pertandingan',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
+            icon: Icon(Icons.confirmation_number),
             label: 'Tiket',
           ),
         ],

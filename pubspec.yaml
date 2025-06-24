@@ -32,12 +32,17 @@ dependencies:
     sdk: flutter
   flutter_svg: ^2.0.9
   http: ^1.4.0
+  intl: ^0.19.0
   flutter_dotenv: ^5.2.1
   shared_preferences: ^2.2.2  
   mobile_scanner: ^3.5.2
   image_picker: ^1.0.4
   permission_handler: ^11.0.1
   sliding_up_panel: ^2.0.0+1
+  pull_to_refresh: ^2.0.0
+  lottie: ^2.6.0
+  cached_network_image: ^3.3.1
+  carousel_slider: ^4.1.1
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -69,6 +74,7 @@ flutter:
   assets:
      - assets/images/
      - assets/icons/
+     - assets/lottie/blue-ball.json
      - .env
 
   fonts:
