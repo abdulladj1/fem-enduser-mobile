@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:collection/collection.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ifl_mobile/models/season.dart' as modelSeason;
 import 'package:ifl_mobile/models/ticket.dart';
 import 'package:ifl_mobile/models/series.dart';
@@ -10,6 +12,11 @@ import 'package:intl/intl.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'profile.dart';
 import 'user-home-root.dart';
+
+String _splitWords(String input) {
+  final words = input.split(' ');
+  return words.join('\n');
+}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -110,7 +117,6 @@ class _HomePageState extends State<HomePage> {
 
   Widget _matchCard(Match m, Ticket ticket) {
     final venueName = _nearestSeries?.venue.name ?? '';
-
     return Container(
       width: 380,
       height: double.infinity,
@@ -206,34 +212,51 @@ class _HomePageState extends State<HomePage> {
 
   /// helper kecil untuk logo + nama
   Widget _teamColumn(String logo, String name) {
+    bool isSvg(String url) => url.toLowerCase().endsWith('.svg');
+
     return Column(
       children: [
-        CachedNetworkImage(
-          imageUrl: logo,
-          width: 28,
-          fit: BoxFit.contain,
-          placeholder:
-              (_, __) => const SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-          errorWidget:
-              (_, __, ___) =>
-                  const Icon(Icons.broken_image, size: 28, color: Colors.grey),
-        ),
+        isSvg(logo)
+            ? SvgPicture.network(
+              logo,
+              width: 28,
+              fit: BoxFit.contain,
+              placeholderBuilder:
+                  (context) => const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+            )
+            : CachedNetworkImage(
+              imageUrl: logo,
+              width: 28,
+              fit: BoxFit.contain,
+              placeholder:
+                  (_, __) => const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              errorWidget:
+                  (_, __, ___) => const Icon(
+                    Icons.broken_image,
+                    size: 28,
+                    color: Colors.grey,
+                  ),
+            ),
         const SizedBox(height: 8),
         SizedBox(
           width: 50,
           child: Text(
-            name,
+            _splitWords(name),
             textAlign: TextAlign.center,
             maxLines: 2,
             style: const TextStyle(
               fontFamily: 'SinkinSans',
               fontWeight: FontWeight.w600,
               color: Colors.white,
-              fontSize: 10,
+              fontSize: 8,
             ),
           ),
         ),
@@ -363,7 +386,9 @@ class _HomePageState extends State<HomePage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const UserHomeRoot(initialIndex: 1),
+                            builder:
+                                (context) =>
+                                    const UserHomeRoot(initialIndex: 1),
                           ),
                         );
                       },
@@ -412,7 +437,7 @@ class _HomePageState extends State<HomePage> {
                         ? const Center(child: Text('Belum ada jadwal'))
                         : CarouselSlider(
                           options: CarouselOptions(
-                            height: 244,
+                            height: 284,
                             enableInfiniteScroll: true,
                             enlargeCenterPage: true,
                             viewportFraction: 0.82,
@@ -426,7 +451,9 @@ class _HomePageState extends State<HomePage> {
                           items:
                               nearestMatches.map((m) {
                                 final ticket = _nearestSeries?.tickets
-                                    ?.firstWhere((t) => t.matchs.contains(m));
+                                    ?.firstWhereOrNull(
+                                      (t) => t.matchs.contains(m),
+                                    );
                                 if (ticket == null) {
                                   return const SizedBox();
                                 }
