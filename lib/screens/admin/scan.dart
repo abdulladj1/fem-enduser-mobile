@@ -83,6 +83,7 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
           final barcodes = capture.barcodes;
           if (barcodes.isNotEmpty) {
             final data = barcodes.first.rawValue;
+            // _verifyTicket(code);
             try {
               final Map<String, dynamic> jsonData = jsonDecode(data!);
               final member = Member.fromJson(jsonData);

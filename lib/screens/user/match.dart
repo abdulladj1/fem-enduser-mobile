@@ -8,8 +8,9 @@ import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:lottie/lottie.dart';
 import 'package:ifl_mobile/models/series.dart';
 import 'profile.dart';
-import 'purchase/transaction-data.dart';
+import 'main-purchase.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../constants/purchase-type.dart';
 
 String formatRange(DateTime start, DateTime end) {
   final bulanSama = start.month == end.month && start.year == end.year;
@@ -358,8 +359,14 @@ class _MatchPageState extends State<MatchPage>
                                                     context,
                                                     MaterialPageRoute(
                                                       builder:
-                                                          (context) =>
-                                                              TransactionDataPage(),
+                                                          (_) =>
+                                                              MainPurchasePage(
+                                                                purchaseType:
+                                                                    PurchaseType
+                                                                        .ticket,
+                                                                targetId:
+                                                                    series.id,
+                                                              ),
                                                     ),
                                                   );
                                                 },
@@ -504,9 +511,13 @@ class _MatchPageState extends State<MatchPage>
                                                                 MaterialPageRoute(
                                                                   builder:
                                                                       (
-                                                                        context,
-                                                                      ) =>
-                                                                          TransactionDataPage(),
+                                                                        _,
+                                                                      ) => MainPurchasePage(
+                                                                        purchaseType:
+                                                                            PurchaseType.ticket,
+                                                                        targetId:
+                                                                            ticket.id,
+                                                                      ),
                                                                 ),
                                                               );
                                                             },
