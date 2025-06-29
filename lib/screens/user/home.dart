@@ -57,10 +57,9 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadSeries() async {
     try {
       final fetched = await fetchSeries(
-        status: 1,
         sort: 'startDate',
         dir: 'asc',
-        seasonId: null,
+        seasonId: activeSeason?.id ?? "none",
       );
 
       List<Match> matches = [];
