@@ -8,7 +8,7 @@ import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:lottie/lottie.dart';
 import 'package:ifl_mobile/models/series.dart';
 import 'profile.dart';
-import 'main-purchase.dart';
+import 'main-purchase-package.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../constants/purchase-type.dart';
 
@@ -169,16 +169,16 @@ class _MatchPageState extends State<MatchPage>
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.notifications,
-                          color:
-                              _scrollOffset > 8
-                                  ? const Color(0xFF0027C1)
-                                  : const Color(0xFF0027C1),
-                        ),
-                        onPressed: () {},
-                      ),
+                      // IconButton(
+                      //   icon: Icon(
+                      //     Icons.notifications,
+                      //     color:
+                      //         _scrollOffset > 8
+                      //             ? const Color(0xFF0027C1)
+                      //             : const Color(0xFF0027C1),
+                      //   ),
+                      //   onPressed: () {},
+                      // ),
                       IconButton(
                         icon: Icon(
                           Icons.person,
@@ -273,7 +273,6 @@ class _MatchPageState extends State<MatchPage>
                               // for (var t in tickets) {
                               //   debugPrint('Ticket seriesId: ${t.seriesId}');
                               // }
-
                               return Container(
                                 margin: const EdgeInsets.symmetric(
                                   horizontal: 16.0,

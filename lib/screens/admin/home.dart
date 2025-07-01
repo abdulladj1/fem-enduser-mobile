@@ -1,28 +1,26 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../models/member.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'package:ifl_mobile/models/ticket-purchase-lists.dart';
+import 'package:ifl_mobile/models/ticket-purchases.dart';
+import 'package:ifl_mobile/shared/utils/pref_helper.dart';
 
 class AdminHomePage extends StatefulWidget {
-  final List<Member> verifiedMembers;
-
-  const AdminHomePage({super.key, required this.verifiedMembers});
-  // const AdminHomePage({super.key});
+  const AdminHomePage({super.key});
 
   @override
-  State<AdminHomePage> createState() => _AdminHomePageState();
+  AdminHomePageState createState() => AdminHomePageState();
 }
 
-class _AdminHomePageState extends State<AdminHomePage> {
+class AdminHomePageState extends State<AdminHomePage> {
   final ScrollController _scrollController = ScrollController();
   double _scrollOffset = 0.0;
+  void refresh() => _fetchVerifiedTickets();
 
-  Future<void> _refreshData() async {
-    await Future.delayed(Duration(seconds: 1)); // Simulasi fetch
-    setState(() {
-      // Di sini kamu bisa panggil API sesungguhnya atau ubah data state.
-      // Misalnya: fetchVerifiedMembers()
-    });
-  }
+  List<TicketPurchase> usedTickets = [];
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -32,12 +30,55 @@ class _AdminHomePageState extends State<AdminHomePage> {
         _scrollOffset = _scrollController.offset;
       });
     });
+    _fetchVerifiedTickets();
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  Future<void> _fetchVerifiedTickets() async {
+    final url = Uri.parse(
+      '${dotenv.env['API_BASE_URL']}/admin/ticket-purchases/used-today',
+    );
+    final token = await PrefHelper().getToken();
+
+    if (token == null) {
+      print("Token not found.");
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final result = TicketPurchaseListResponse.fromJson(jsonResponse);
+
+        if (!mounted) return;
+        setState(() {
+          usedTickets = result.list;
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+        print("Failed to fetch tickets: ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      print("Error fetching tickets: $e");
+    }
+  }
+
+  Future<void> _refreshData() async {
+    await _fetchVerifiedTickets();
+  }
+
+  String formatDate(DateTime? date) {
+    if (date == null) return "-";
+    return "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}";
   }
 
   @override
@@ -53,9 +94,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
           onRefresh: _refreshData,
           child: SingleChildScrollView(
             controller: _scrollController,
-            physics: AlwaysScrollableScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
               children: [
+                // HEADER
                 Stack(
                   children: [
                     Container(
@@ -63,12 +105,12 @@ class _AdminHomePageState extends State<AdminHomePage> {
                       width: double.infinity,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
+                        gradient: const LinearGradient(
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                           colors: [Color(0xFF0A0A39), Color(0xFF0D0D0D)],
                         ),
-                        image: DecorationImage(
+                        image: const DecorationImage(
                           image: AssetImage('assets/images/pattern-5.png'),
                           fit: BoxFit.cover,
                         ),
@@ -76,7 +118,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
+                          const Text(
                             "Rekap Penonton",
                             style: TextStyle(
                               fontFamily: 'SinkinSans',
@@ -88,11 +130,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.person, color: Colors.white),
-                              SizedBox(width: 8),
+                              const Icon(Icons.person, color: Colors.white),
+                              const SizedBox(width: 8),
                               Text(
-                                "${widget.verifiedMembers.length}",
-                                style: TextStyle(
+                                "${usedTickets.length}",
+                                style: const TextStyle(
                                   fontFamily: 'SinkinSans',
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
@@ -107,92 +149,89 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   ],
                 ),
 
-                widget.verifiedMembers.isEmpty
-                    ? Container(
-                      height: MediaQuery.of(context).size.height * 0.65,
-                      alignment: Alignment.center,
+                // CONTENT
+                if (isLoading)
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.65,
+                    child: const Center(child: CircularProgressIndicator()),
+                  )
+                else if (usedTickets.isEmpty)
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.65,
+                    child: const Center(
                       child: Text(
                         "Belum Ada Data Penonton Yang Masuk",
                         style: TextStyle(
                           fontFamily: 'SinkinSans',
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF0D0D0D),
+                          color: Color(0xFF0D0D0D),
                           fontSize: 10,
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                    )
-                    : ListView.builder(
-                      physics: NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      itemCount: widget.verifiedMembers.length,
-                      itemBuilder: (context, index) {
-                        final member = widget.verifiedMembers[index];
-                        return AnimatedOpacity(
-                          duration: Duration(milliseconds: 500),
-                          opacity: 1.0,
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16.0,
-                              vertical: 8.0,
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: usedTickets.length,
+                    itemBuilder: (context, index) {
+                      final ticket = usedTickets[index];
+                      return Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          image: const DecorationImage(
+                            image: AssetImage('assets/images/pattern-3.png'),
+                            fit: BoxFit.cover,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              offset: Offset(0, 1),
+                              blurRadius: 2,
                             ),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              image: DecorationImage(
-                                image: AssetImage(
-                                  'assets/images/pattern-3.png',
-                                ),
-                                fit: BoxFit.cover,
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              radius: 32,
+                              backgroundImage: AssetImage(
+                                'assets/images/Profile.png',
                               ),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  offset: Offset(0, 1),
-                                  blurRadius: 2,
-                                ),
-                              ],
                             ),
-                            child: Row(
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                CircleAvatar(
-                                  radius: 32,
-                                  backgroundImage: AssetImage(
-                                    'assets/images/Profile.png',
+                                Text(
+                                  ticket.member.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
                                   ),
                                 ),
-                                SizedBox(width: 16),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      member.name,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    Text(
-                                      member.email,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    if (member.phone != null)
-                                      Text(
-                                        member.phone!,
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                  ],
+                                Text(
+                                  formatDate(ticket.usedAt),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    color: Colors.grey[800],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
