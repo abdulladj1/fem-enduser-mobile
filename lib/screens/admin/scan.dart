@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:ifl_mobile/models/ticket-purchases.dart';
+import 'package:ifl_mobile/shared/utils/pref_helper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
-import '../../models/member.dart';
-// import 'home.dart';
-// import 'admin-home-root.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ScanPage extends StatefulWidget {
-  final Function(Member member) onMemberScanned;
-
-  // const ScanPage({super.key});
-  const ScanPage({super.key, required this.onMemberScanned});
+  const ScanPage({super.key});
 
   @override
   State<ScanPage> createState() => _ScanPageState();
@@ -20,9 +18,11 @@ class ScanPage extends StatefulWidget {
 
 class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
   String? scannedData;
+  TicketPurchase? scannedTicket;
+  bool isProcessing = false;
+
   final MobileScannerController _controller = MobileScannerController();
   final PanelController _panelController = PanelController();
-  List<Member> verifiedMembers = [];
 
   late AnimationController _lineController;
   Animation<double>? _lineAnimation;
@@ -30,7 +30,6 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-
     _lineController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -58,17 +57,60 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
 
       if (image != null) {
         final result = await _controller.analyzeImage(image.path);
-        // if (result != null && result.barcodes.isNotEmpty) {
         if (result.barcodes.isNotEmpty) {
-          setState(() {
-            scannedData = result.barcodes.first.rawValue;
-          });
-          _panelController.open();
+          final code = result.barcodes.first.rawValue;
+          if (code != null) {
+            setState(() {
+              scannedData = code;
+            });
+            _panelController.open();
+            _verifyTicket(code);
+          }
         }
       }
     } else {
       openAppSettings();
     }
+  }
+
+  Future<void> _verifyTicket(String code) async {
+    final url = Uri.parse(
+      '${dotenv.env['API_BASE_URL']}/admin/ticket-purchases/scan',
+    );
+    final token = await PrefHelper().getToken();
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ?? '',
+        },
+        body: jsonEncode({'code': code}),
+      );
+
+      final Map<String, dynamic> json = jsonDecode(response.body);
+      final TicketPurchaseResponse resp = TicketPurchaseResponse.fromJson(json);
+
+      if (response.statusCode == 200) {
+        setState(() {
+          scannedTicket = resp.data;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Scan berhasil!")));
+      } else {
+        _showError(resp.message);
+      }
+    } catch (e) {
+      _showError("Terjadi kesalahan: $e");
+    }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   @override
@@ -79,27 +121,30 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
       body: Stack(
         children: [
           MobileScanner(
-        onDetect: (capture) {
-          final barcodes = capture.barcodes;
-          if (barcodes.isNotEmpty) {
-            final data = barcodes.first.rawValue;
-            // _verifyTicket(code);
-            try {
-              final Map<String, dynamic> jsonData = jsonDecode(data!);
-              final member = Member.fromJson(jsonData);
-              widget.onMemberScanned(member); // Kirim balik ke root
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Member berhasil diverifikasi")),
-              );
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("QR tidak valid")),
-              );
-            }
-          }
-        },
-      ),
+            controller: _controller,
+            onDetect: (capture) {
+              if (isProcessing) return;
 
+              final barcodes = capture.barcodes;
+              if (barcodes.isNotEmpty) {
+                final code = barcodes.first.rawValue;
+                if (code != null) {
+                  setState(() {
+                    scannedData = code;
+                    isProcessing = true;
+                  });
+                  _panelController.open();
+                  _verifyTicket(code).whenComplete(() {
+                    setState(() {
+                      isProcessing = false;
+                    });
+                  });
+                }
+              }
+            },
+          ),
+
+          // AppBar Button
           Positioned(
             top: 40,
             left: 16,
@@ -121,6 +166,7 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
             ),
           ),
 
+          // Scan Line
           if (_lineAnimation != null)
             AnimatedBuilder(
               animation: _lineAnimation!,
@@ -129,13 +175,11 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
                 final double end = screenHeight + 164;
                 final double top =
                     start + _lineAnimation!.value * (end - start);
-
                 final bool isMovingUp =
                     _lineController.status == AnimationStatus.reverse;
 
                 final double startFade = 200.0;
                 final double endFade = screenHeight - 200.0;
-
                 double fadeOpacity;
 
                 if (top < startFade) {
@@ -169,10 +213,11 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
               },
             ),
 
+          // Sliding Panel
           SlidingUpPanel(
             controller: _panelController,
             minHeight: 120,
-            maxHeight: 280,
+            maxHeight: 300,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
@@ -188,7 +233,7 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
                 borderRadius: BorderRadius.circular(16),
               ),
               child:
-                  scannedData == null
+                  scannedTicket == null
                       ? const Center(
                         child: Text(
                           "Arahkan kamera ke QR Code",
@@ -198,7 +243,7 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
                           ),
                         ),
                       )
-                      : _scanResultWidget(scannedData!),
+                      : _scanResultWidget(scannedTicket!),
             ),
           ),
         ],
@@ -219,7 +264,7 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _scanResultWidget(String result) {
+  Widget _scanResultWidget(TicketPurchase t) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -235,7 +280,7 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 16),
         const Text(
-          "DETAIL SCAN",
+          "DETAIL TIKET",
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
@@ -244,36 +289,47 @@ class _ScanPageState extends State<ScanPage> with TickerProviderStateMixin {
             const CircleAvatar(
               radius: 28,
               backgroundColor: Color(0xFFEDF1FF),
-              child: Icon(Icons.person, size: 28, color: Colors.indigo),
+              child: Icon(
+                Icons.confirmation_number,
+                size: 28,
+                color: Colors.indigo,
+              ),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  result,
-                  style: TextStyle(
-                    fontFamily: 'SinkinSans',
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0D0D0D),
-                    fontSize: 16,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.member.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-                const Text(
-                  "01-01-2025",
-                  style: TextStyle(
-                    fontFamily: 'SinkinSans',
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF0D0D0D),
-                    fontSize: 12,
+                  Text(
+                    t.venue.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-              ],
+                  Text(
+                    "Tanggal: ${formatDate(t.usedAt)}",
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ],
     );
+  }
+
+  String formatDate(DateTime? date) {
+    if (date == null) return "-";
+    return "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}";
   }
 }
 

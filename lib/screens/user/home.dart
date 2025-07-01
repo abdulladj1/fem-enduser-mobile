@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'profile.dart';
 import 'user-home-root.dart';
+// import 'package:url_launcher/url_launcher.dart';
 
 String _splitWords(String input) {
   final words = input.split(' ');
@@ -307,16 +308,16 @@ class _HomePageState extends State<HomePage> {
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.notifications,
-                          color:
-                              _scrollOffset > 204
-                                  ? const Color(0xFF0027C1)
-                                  : Colors.white,
-                        ),
-                        onPressed: () {},
-                      ),
+                      // IconButton(
+                      //   icon: Icon(
+                      //     Icons.notifications,
+                      //     color:
+                      //         _scrollOffset > 204
+                      //             ? const Color(0xFF0027C1)
+                      //             : Colors.white,
+                      //   ),
+                      //   onPressed: () {},
+                      // ),
                       IconButton(
                         icon: Icon(
                           Icons.person,
@@ -512,7 +513,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              // Voting
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16.0,
@@ -534,17 +534,30 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              Container(
-                margin: EdgeInsets.symmetric(horizontal: 16),
-                height: 184,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/voting-banner.png'),
-                    fit: BoxFit.cover,
+
+              GestureDetector(
+                // onTap: () async {
+                //   final url = Uri.parse('http://localhost:3000/');
+                //   if (!mounted) return;
+                //   if (await canLaunchUrl(url)) {
+                //     await launchUrl(url, mode: LaunchMode.externalApplication);
+                //   } else {
+                //     throw 'Could not launch $url';
+                //   }
+                // },
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: 16),
+                  height: 184,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/voting-banner.png'),
+                      fit: BoxFit.cover,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
+
               SizedBox(height: 8),
 
               // Team

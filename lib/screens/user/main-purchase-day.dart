@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// import 'package:intl/intl.dart';
 import 'package:ifl_mobile/models/purchase.dart';
 import 'package:ifl_mobile/constants/purchase-type.dart';
 import 'package:ifl_mobile/services/purchase.dart';
@@ -38,9 +37,6 @@ class _MainPurchasePageState extends State<MainPurchasePage> {
     if (token == null) {
       throw Exception('Token not found');
     }
-
-    //     print('PurchaseType: ${widget.purchaseType}');
-    // print('targetId: ${widget.targetId}');
 
     return PurchaseService().createPurchase(
       widget.purchaseType,

@@ -73,11 +73,11 @@ class _TicketPageState extends State<TicketPage> {
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        icon: Icon(Icons.notifications,
-                            color: _scrollOffset > 40 ? const Color(0xFF0027C1) : const Color(0xFF0027C1)),
-                        onPressed: () {},
-                      ),
+                      // IconButton(
+                      //   icon: Icon(Icons.notifications,
+                      //       color: _scrollOffset > 40 ? const Color(0xFF0027C1) : const Color(0xFF0027C1)),
+                      //   onPressed: () {},
+                      // ),
                       IconButton(
                         icon: Icon(Icons.person,
                             color: _scrollOffset > 40 ? const Color(0xFF0027C1) : const Color(0xFF0027C1)),
